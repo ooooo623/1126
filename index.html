@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#2457d6">
+<meta name="description" content="中高生向けの単語カード＆小テストアプリ。データはこの端末のブラウザに保存されます。">
+<title>単語カード帳</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+<style>
+/* VOICE everyday study tool, cheerful but clear
+   IDEA a ring-bound 単語カード on a school-notebook blue desk, yellow highlighter for marks
+   PICTURE the big current card itself (flips / quiz question), centred under a modest title
+   COLOUR notebook blue ground band, white cards, ink navy-black, highlighter yellow, red for wrong
+   TYPE Zen Maru Gothic display + Noto Sans JP text
+   LAYOUT laptop: blue band with title, set chips, tabs, big card; tools below. phone: same order stacked */
+:root{color-scheme:light dark;--bg:light-dark(#ffffff,#0f1530);--band:light-dark(#2457d6,#18245a);--ink:light-dark(#141a2e,#eef1fb);--sub:light-dark(#5a6178,#a9b0cc);--card:light-dark(#ffffff,#1d2750);--cardink:light-dark(#141a2e,#eef1fb);--line:light-dark(#dfe4f2,#2e3a6e);--hi:#ffd23f;--ok:light-dark(#0f8a5f,#4fd39e);--ng:light-dark(#d93a3a,#ff7b7b);--soft:light-dark(#f2f5fd,#151d42)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:16px/1.6 "Noto Sans JP",system-ui,sans-serif;overflow-x:clip}
+h1,h2,h3,.disp{font-family:"Zen Maru Gothic","Noto Sans JP",sans-serif}
+.band{padding-block:clamp(22px,3.5vw,48px);padding-inline:max(5vw,16px)}
+.wrap{max-width:1100px;margin:0 auto}
+.top{background:var(--band);color:#fff}
+.top h1{font-size:clamp(30px,4.5vw,44px);line-height:1.05;letter-spacing:-.02em;margin:0 0 4px;font-weight:900}
+.top p{margin:0;opacity:.85;font-size:15px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:18px 0 14px}
+.chip{border:2px solid rgba(255,255,255,.55);background:transparent;color:#fff;border-radius:999px;padding:8px 16px;font:500 15px "Noto Sans JP",sans-serif;min-height:44px;cursor:pointer}
+.chip[aria-pressed=true]{background:#fff;color:#1b3fa6;border-color:#fff}
+.chip.add{border-style:dashed}
+.tabs{display:flex;gap:6px;background:rgba(0,0,0,.18);padding:5px;border-radius:14px;width:max-content;max-width:100%;flex-wrap:wrap}
+.tab{border:0;background:transparent;color:#fff;font:700 15px "Zen Maru Gothic",sans-serif;padding:10px 18px;border-radius:10px;min-height:44px;cursor:pointer}
+.tab[aria-selected=true]{background:var(--hi);color:#141a2e}
+button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:3px solid var(--hi);outline-offset:2px}
+.stage{margin-top:20px}
+.meta{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;font-size:14px;margin-bottom:10px}
+.prog{height:8px;background:rgba(255,255,255,.25);border-radius:9px;overflow:hidden;flex:1 1 160px;max-width:320px}
+.prog i{display:block;height:100%;background:var(--hi);border-radius:9px;transition:width .3s}
+.flip{perspective:1400px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.cardin{position:relative;min-height:clamp(240px,34vw,330px);transform-style:preserve-3d;transition:transform .5s cubic-bezier(.3,.7,.2,1)}
+.flip.on .cardin{transform:rotateY(180deg)}
+.face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;background:var(--card);color:var(--cardink);border-radius:18px;box-shadow:0 10px 0 rgba(0,0,0,.18);display:grid;place-items:center;padding:44px 28px 30px;text-align:center;overflow:hidden}
+.face::before{content:"";position:absolute;left:22px;top:14px;width:22px;height:22px;border-radius:50%;background:var(--band);box-shadow:inset 0 2px 3px rgba(0,0,0,.35)}
+.face.back{transform:rotateY(180deg);background:light-dark(#fffbe6,#2a2f55)}
+.face .lab{position:absolute;top:14px;right:20px;font-size:13px;color:var(--sub)}
+.face .txt{font:700 clamp(24px,4vw,40px)/1.35 "Zen Maru Gothic",sans-serif;overflow-wrap:anywhere;white-space:pre-wrap}
+.face.back .txt{background:linear-gradient(transparent 58%,color-mix(in srgb,var(--hi) 70%,transparent) 58%);padding:0 .15em}
+.face .known{position:absolute;bottom:14px;left:20px;font-size:13px;color:var(--ok);font-weight:700}
+.ctl{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:18px}
+.btn{border:0;border-radius:12px;padding:11px 20px;min-height:46px;font:700 15px "Noto Sans JP",sans-serif;cursor:pointer;background:var(--soft);color:var(--ink)}
+.top .btn{background:rgba(255,255,255,.16);color:#fff}
+.btn.y{background:var(--hi);color:#141a2e}
+.btn.ok{background:var(--ok);color:#fff}
+.btn.ng{background:var(--ng);color:#fff}
+.btn:disabled{opacity:.45;cursor:default}
+.btn.sm{padding:7px 12px;min-height:38px;font-size:14px}
+.opts{display:flex;gap:16px;flex-wrap:wrap;justify-content:center;margin-top:14px;font-size:14px}
+.opts label{display:flex;align-items:center;gap:6px;min-height:36px;cursor:pointer}
+.opts input{width:20px;height:20px;accent-color:var(--hi)}
+.qbox{background:var(--card);color:var(--cardink);border-radius:18px;box-shadow:0 10px 0 rgba(0,0,0,.18);padding:clamp(22px,3vw,34px)}
+.qbox .qn{font-size:14px;color:var(--sub);display:flex;justify-content:space-between;gap:8px}
+.qbox .q{font:700 clamp(22px,3.4vw,34px)/1.4 "Zen Maru Gothic",sans-serif;margin:10px 0 20px;overflow-wrap:anywhere;white-space:pre-wrap}
+.choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.choice{border:2px solid var(--line);background:var(--bg);color:var(--ink);border-radius:12px;padding:14px;min-height:56px;font:500 17px "Noto Sans JP",sans-serif;text-align:left;cursor:pointer;overflow-wrap:anywhere}
+.choice:hover:not(:disabled){border-color:var(--band)}
+.choice.r{border-color:var(--ok);background:color-mix(in srgb,var(--ok) 14%,var(--bg))}
+.choice.w{border-color:var(--ng);background:color-mix(in srgb,var(--ng) 12%,var(--bg))}
+.choice:disabled{cursor:default}
+.typed{display:flex;gap:10px;flex-wrap:wrap}
+.typed input{flex:1 1 220px}
+input[type=text],textarea,select{font:16px "Noto Sans JP",sans-serif;border:2px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--bg);color:var(--ink);width:100%}
+textarea{resize:vertical}
+.fb{margin-top:16px;font-weight:700;min-height:1.6em}
+.fb.r{color:var(--ok)}.fb.w{color:var(--ng)}
+.setup{display:grid;gap:14px;max-width:560px;margin:0 auto}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.seg button{flex:1 1 auto}
+.seg button[aria-pressed=true]{background:var(--hi);color:#141a2e}
+.score{text-align:center}
+.score .big{font:900 clamp(56px,10vw,88px)/1 "Zen Maru Gothic",sans-serif}
+.score .big small{font-size:.35em;color:var(--sub)}
+.miss{list-style:none;padding:0;margin:18px 0 0;text-align:left;display:grid;gap:8px}
+.miss li{border-left:4px solid var(--ng);background:var(--soft);padding:10px 14px;border-radius:0 10px 10px 0;overflow-wrap:anywhere}
+.miss b{display:block}
+.miss span{color:var(--sub);font-size:14px}
+main h2{font-size:clamp(22px,3vw,28px);line-height:1.15;margin:0 0 12px}
+.ed{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:28px;align-items:start}
+.rows{display:grid;gap:8px}
+.row{display:grid;grid-template-columns:2em minmax(0,1.3fr) minmax(0,1fr) auto;gap:8px;align-items:center}
+.row .n{color:var(--sub);font-size:14px;text-align:right}
+.row input{padding:8px 10px}
+.del{border:0;background:transparent;color:var(--sub);width:40px;height:40px;border-radius:10px;cursor:pointer;font-size:20px}
+.del:hover{background:var(--soft);color:var(--ng)}
+.panel{background:var(--soft);border-radius:16px;padding:18px;display:grid;gap:12px}
+.panel h3{margin:0;font-size:18px}
+.hint{font-size:14px;color:var(--sub);margin:0}
+.lbl{font-size:14px;font-weight:700;display:block;margin-bottom:4px}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#141a2e;color:#fff;padding:10px 12px 10px 18px;border-radius:12px;display:flex;gap:12px;align-items:center;box-shadow:0 8px 30px rgba(0,0,0,.25);z-index:9;max-width:calc(100% - 32px)}
+.toast[hidden]{display:none}
+.toast .btn{background:var(--hi);color:#141a2e}
+.empty{text-align:center;padding:40px 16px;background:var(--card);color:var(--cardink);border-radius:18px}
+.sync{font-size:13px;opacity:.8}
+@media(max-width:760px){.ed{grid-template-columns:minmax(0,1fr)}}
+.panel .btn:not(.y):not(.ng){background:var(--bg);border:2px solid var(--line)}
+@media(max-width:520px){
+ .choices{grid-template-columns:minmax(0,1fr)}
+ .row{grid-template-columns:minmax(0,1fr) auto;gap:6px;padding:10px;background:var(--soft);border-radius:12px}
+ .row .n{display:none}.row .a{grid-column:1}.row .del{grid-row:1/3;grid-column:2}
+ .tab{padding:10px 13px}
+ .top .sync{display:block}
+ .chips{gap:6px}.chip{padding:6px 13px;font-size:14px;min-height:40px}
+ .ctl.cardctl{display:grid;grid-template-columns:1fr 1fr}
+ .ctl.cardctl #mkNo{order:1}.ctl.cardctl #mkYes{order:2}.ctl.cardctl #prev{order:3}.ctl.cardctl #next{order:4}
+ .face{padding:44px 18px 30px}
+ .toast{bottom:calc(16px + env(safe-area-inset-bottom))}
+}
+@media(prefers-reduced-motion:reduce){.cardin{transition:none}.prog i{transition:none}}
+</style>
+</head>
+<body>
+<header class="top band">
+  <div class="wrap">
+    <h1>単語カード帳</h1>
+    <p>問題セットを作って、カードで覚えて、小テストで確かめる。<span class="sync" id="sync"></span></p>
+    <div class="chips" id="chips"></div>
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" id="t-card" data-v="card">カード</button>
+      <button class="tab" role="tab" id="t-quiz" data-v="quiz">小テスト</button>
+      <button class="tab" role="tab" id="t-edit" data-v="edit">編集</button>
+    </div>
+    <div class="stage" id="stage"></div>
+  </div>
+</header>
+<main class="band"><div class="wrap" id="below"></div></main>
+<div class="toast" id="toast" hidden><span id="toastMsg"></span><button class="btn sm" id="toastBtn">元に戻す</button></div>
+<script>
+{
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid=()=>Math.random().toString(36).slice(2,9);
+const mk=(name,pairs)=>({id:uid(),name,cards:pairs.map(([q,a])=>({id:uid(),q,a,known:false}))});
+const sample=()=>({cur:null,sets:[
+  mk('中1数学 正負の数',[['(−3)+(+5)','2'],['(−4)×(−6)','24'],['(−12)÷3','−4'],['−2²','−4'],['(−2)²','4'],['5−(−8)','13'],['|−7|（絶対値）','7'],['(−1)³','−1']]),
+  mk('中2理科 化学式',[['水','H₂O'],['二酸化炭素','CO₂'],['酸素','O₂'],['塩化ナトリウム','NaCl'],['アンモニア','NH₃'],['水素','H₂'],['酸化銅','CuO'],['炭酸水素ナトリウム','NaHCO₃']]),
+  mk('中学社会 歴史の年号',[['大化の改新','645年'],['平城京に都を移す','710年'],['平安京に都を移す','794年'],['応仁の乱が始まる','1467年'],['鉄砲が伝わる','1543年'],['関ヶ原の戦い','1600年'],['五箇条の御誓文','1868年'],['日本国憲法の施行','1947年']]),
+  mk('高校英語 英単語',[['abandon','見捨てる・断念する'],['acquire','獲得する・身につける'],['consequence','結果・影響'],['essential','不可欠な'],['maintain','維持する'],['reluctant','気が進まない'],['significant','重要な・かなりの'],['obtain','手に入れる']])
+],sample:true});
+const LS='tango-cards-v1';
+let S=null;
+try{const r=localStorage.getItem(LS);if(r)S=JSON.parse(r)}catch(e){}
+if(!S||!Array.isArray(S.sets))S=sample();
+if(!S.sets.find(x=>x.id===S.cur))S.cur=S.sets[0]?.id||null;
+let view='card';
+const cur=()=>S.sets.find(x=>x.id===S.cur);
+const $=id=>document.getElementById(id);
+
+/* ---- saving: browser only (localStorage) ---- */
+const setSync=t=>{$('sync').textContent=t?' ・ '+t:''};
+const save=()=>{
+  try{localStorage.setItem(LS,JSON.stringify(S));setSync('この端末に保存済み')}
+  catch(e){setSync('保存できません（プライベートモードなど）')}
+};
+setSync('この端末に保存されます');
+
+/* ---- toast with undo ---- */
+let undoFn=null,toastT=null;
+const toast=(msg,fn)=>{$('toastMsg').textContent=msg;undoFn=fn;$('toastBtn').hidden=!fn;$('toast').hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>{$('toast').hidden=true;undoFn=null},5000)};
+$('toastBtn').onclick=()=>{if(undoFn)undoFn();undoFn=null;$('toast').hidden=true;render()};
+
+/* ---- flashcard state ---- */
+let fc=null;
+const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+const fcOpt={shuf:false,only:false,rev:false};
+const buildFc=()=>{const s=cur();if(!s){fc={ids:[],i:0,flip:false};return}let ids=s.cards.filter(c=>c.q.trim()||c.a.trim()).filter(c=>!fcOpt.only||!c.known).map(c=>c.id);if(fcOpt.shuf)ids=shuffle(ids);fc={ids,i:0,flip:false,set:s.id}};
+
+/* ---- quiz state ---- */
+let qz={phase:'setup',fmt:'mc',num:10};
+const norm=s=>String(s).normalize('NFKC').toLowerCase().replace(/[\s　・、,。.]/g,'').replace(/[−‐ー–—]/g,'-');
+const startQuiz=(onlyIds)=>{
+  const s=cur();const pool=s.cards.filter(c=>c.q.trim()&&c.a.trim());
+  let picks=onlyIds?pool.filter(c=>onlyIds.includes(c.id)):shuffle(pool);
+  if(!onlyIds&&qz.num)picks=picks.slice(0,qz.num);
+  picks=shuffle(picks);
+  const fmt=(qz.fmt==='mc'&&pool.length<4)?'type':qz.fmt;
+  const items=picks.map(c=>{
+    let ch=null;
+    if(fmt==='mc'){const others=shuffle([...new Set(pool.filter(o=>o.id!==c.id&&norm(o.a)!==norm(c.a)).map(o=>o.a))]).slice(0,3);ch=shuffle([c.a,...others])}
+    return{id:c.id,q:c.q,a:c.a,ch,ans:null,ok:null}});
+  qz={...qz,phase:'run',items,i:0,fmtUsed:fmt};render();
+};
+
+/* ---- render ---- */
+const chips=()=>S.sets.map(s=>`<button class="chip" data-set="${esc(s.id)}" aria-pressed="${s.id===S.cur}">${esc(s.name||'無題のセット')}</button>`).join('')+`<button class="chip add" id="newSet">＋ 新しいセット</button>`;
+
+const cardView=()=>{
+  const s=cur();
+  if(!s)return`<div class="empty"><p>問題セットがありません。「＋ 新しいセット」から作りましょう。</p></div>`;
+  if(!fc||fc.set!==s.id)buildFc();
+  const known=s.cards.filter(c=>c.known).length,total=s.cards.length;
+  if(!fc.ids.length)return`<div class="meta"><span>覚えた ${known} / ${total}</span><div class="prog"><i style="width:${total?known/total*100:0}%"></i></div></div><div class="empty"><p class="disp" style="font-size:22px;margin:0 0 8px">${fcOpt.only&&total?'全部覚えました！':'カードがまだありません'}</p><p class="hint">${fcOpt.only&&total?'「未習得だけ」を外すと全部のカードに戻ります。':'編集タブで問題を追加してください。'}</p></div>${optsHtml()}`;
+  const c=s.cards.find(x=>x.id===fc.ids[fc.i])||{q:'',a:''};
+  const f=fcOpt.rev?c.a:c.q,b=fcOpt.rev?c.q:c.a;
+  return`<div class="meta"><span>${fc.i+1} / ${fc.ids.length} 枚目 ・ 覚えた ${known} / ${total}</span><div class="prog"><i style="width:${total?known/total*100:0}%"></i></div></div>
+  <div class="flip ${fc.flip?'on':''}" id="flip" tabindex="0" role="button" aria-label="カードをめくる">
+   <div class="cardin"><div class="face"><span class="lab">${fcOpt.rev?'答え':'問題'} ・ タップでめくる</span><div class="txt">${esc(f)}</div>${c.known?'<span class="known">✓ 覚えた</span>':''}</div>
+   <div class="face back"><span class="lab">${fcOpt.rev?'問題':'答え'}</span><div class="txt">${esc(b)}</div></div></div></div>
+  <div class="ctl cardctl"><button class="btn" id="prev" ${fc.i?'':'disabled'}>← 前へ</button><button class="btn ng" id="mkNo">× まだ</button><button class="btn ok" id="mkYes">○ 覚えた</button><button class="btn" id="next">次へ →</button></div>${optsHtml()}`;
+};
+const optsHtml=()=>`<div class="opts"><label><input type="checkbox" id="oShuf" ${fcOpt.shuf?'checked':''}>シャッフル</label><label><input type="checkbox" id="oOnly" ${fcOpt.only?'checked':''}>未習得だけ</label><label><input type="checkbox" id="oRev" ${fcOpt.rev?'checked':''}>答えから出す</label><button class="btn sm" id="resetKnown">覚えた印をリセット</button></div>`;
+
+const quizView=()=>{
+  const s=cur();
+  if(!s)return`<div class="empty"><p>問題セットを選んでください。</p></div>`;
+  const pool=s.cards.filter(c=>c.q.trim()&&c.a.trim());
+  if(qz.phase==='setup'){
+    if(!pool.length)return`<div class="empty"><p>このセットにはまだ問題がありません。編集タブで追加してください。</p></div>`;
+    return`<div class="qbox setup"><h2 style="margin:0">「${esc(s.name)}」の小テスト</h2>
+    <div><span class="lbl">形式</span><div class="seg"><button class="btn" data-fmt="mc" aria-pressed="${qz.fmt==='mc'}">4択</button><button class="btn" data-fmt="type" aria-pressed="${qz.fmt==='type'}">記述（答えを入力）</button></div>${pool.length<4?'<p class="hint" style="margin-top:6px">4択には問題が4問以上必要です。今は記述式で出題します。</p>':''}</div>
+    <div><span class="lbl">問題数</span><div class="seg">${[5,10,0].map(n=>`<button class="btn" data-num="${n}" aria-pressed="${qz.num===n}">${n?n+'問':'全部（'+pool.length+'問）'}</button>`).join('')}</div></div>
+    <button class="btn y" id="go" style="font-size:17px">スタート</button></div>`;
+  }
+  if(qz.phase==='run'){
+    const it=qz.items[qz.i],done=it.ans!==null;
+    let body;
+    if(qz.fmtUsed==='mc')body=`<div class="choices">${it.ch.map((t,k)=>{let cl='';if(done){if(norm(t)===norm(it.a))cl='r';else if(t===it.ans)cl='w'}return`<button class="choice ${cl}" data-ch="${k}" ${done?'disabled':''}>${esc(t)}</button>`}).join('')}</div>`;
+    else body=`<form class="typed" id="tf"><input type="text" id="tin" autocomplete="off" placeholder="答えを入力" ${done?'disabled':''} value="${done?esc(it.ans):''}"><button class="btn y" ${done?'disabled':''}>答え合わせ</button></form>`;
+    const fb=done?(it.ok?`<div class="fb r">○ 正解！</div>`:`<div class="fb w">× 正解は「${esc(it.a)}」 ${qz.fmtUsed==='type'?'<button class="btn sm" id="override">正解にする</button>':''}</div>`):'<div class="fb"></div>';
+    const sc=qz.items.filter(x=>x.ok).length;
+    return`<div class="qbox"><div class="qn"><span>第${qz.i+1}問 / ${qz.items.length}問</span><span>正解 ${sc}</span></div><div class="q">${esc(it.q)}</div>${body}${fb}
+    <div class="ctl" style="justify-content:flex-end"><button class="btn" id="quit">やめる</button><button class="btn y" id="qnext" ${done?'':'disabled'}>${qz.i+1<qz.items.length?'次の問題 →':'結果を見る'}</button></div></div>`;
+  }
+  const n=qz.items.length,sc=qz.items.filter(x=>x.ok).length,miss=qz.items.filter(x=>!x.ok);
+  return`<div class="qbox score"><p class="disp" style="margin:0;font-size:20px">結果</p><div class="big">${sc}<small> / ${n}</small></div><p style="margin:6px 0 0">正答率 ${n?Math.round(sc/n*100):0}%${sc===n?' ・ 全問正解！':''}</p>
+  ${miss.length?`<ul class="miss">${miss.map(m=>`<li><b>${esc(m.q)}</b><span>正解：${esc(m.a)}${m.ans?' ／ あなたの答え：'+esc(m.ans):''}</span></li>`).join('')}</ul>`:''}
+  <div class="ctl">${miss.length?'<button class="btn ng" id="retryMiss">間違えた問題だけ再テスト</button>':''}<button class="btn y" id="again">もう一度</button><button class="btn" id="toSetup">設定を変える</button></div></div>`;
+};
+
+const editView=()=>{
+  const s=cur();
+  if(!s)return`<div class="empty"><p>「＋ 新しいセット」から問題セットを作りましょう。</p></div>`;
+  return`<div class="ed"><section><h2>「${esc(s.name)}」の問題</h2>
+  <label class="lbl" for="setName">セット名</label><input type="text" id="setName" value="${esc(s.name)}" style="margin-bottom:14px">
+  <div class="rows">${s.cards.map((c,i)=>`<div class="row" data-cid="${esc(c.id)}"><span class="n">${i+1}</span><input type="text" class="q" id="q-${esc(c.id)}" aria-label="問題${i+1}" placeholder="問題" value="${esc(c.q)}"><input type="text" class="a" id="a-${esc(c.id)}" aria-label="答え${i+1}" placeholder="答え" value="${esc(c.a)}"><button class="del" data-del="${esc(c.id)}" aria-label="削除">×</button></div>`).join('')}</div>
+  <div class="ctl" style="justify-content:flex-start"><button class="btn y" id="addRow">＋ 問題を追加</button></div>
+  ${S.sample?'<p class="hint">最初に入っているのはサンプル問題です。自由に書きかえたり削除したりできます。</p>':''}</section>
+  <aside class="panel"><h3>まとめて追加</h3><p class="hint">1行に1問、「問題」と「答え」をタブかカンマで区切ります。Excelやスプレッドシートの2列をそのまま貼り付けてもOKです。</p>
+  <textarea id="bulk" rows="6" placeholder="光合成で作られる気体,酸素&#10;日本の首都,東京"></textarea><button class="btn y" id="bulkAdd">追加する</button>
+  <h3 style="margin-top:8px">書き出し</h3><p class="hint">このセットを「問題,答え」の形でコピーします。バックアップや共有に。</p><button class="btn" id="copyOut">コピーする</button>
+  <h3 style="margin-top:8px">セットの削除</h3><button class="btn ng" id="delSet">このセットを削除</button></aside></div>`;
+};
+
+const render=()=>{
+  $('chips').innerHTML=chips();
+  for(const t of document.querySelectorAll('.tab'))t.setAttribute('aria-selected',t.dataset.v===view);
+  if(view==='card'){$('stage').innerHTML=cardView();$('below').innerHTML=howTo()}
+  else if(view==='quiz'){$('stage').innerHTML=quizView();$('below').innerHTML=howTo()}
+  else{$('stage').innerHTML='';$('below').innerHTML=editView()}
+  if(view==='quiz'&&qz.phase==='run'&&qz.fmtUsed==='type'){const t=$('tin');if(t&&!t.disabled)t.focus({preventScroll:true})}
+};
+const howTo=()=>`<h2>使い方</h2><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(15em,1fr));gap:18px">
+<div><b>1. セットを選ぶ・作る</b><p class="hint">上のボタンで教科を切り替え。「＋ 新しいセット」で自分のセットを作れます。</p></div>
+<div><b>2. カードで覚える</b><p class="hint">カードをタップ（またはスペースキー）でめくり、○か×をつけます。「未習得だけ」で苦手なカードに集中。</p></div>
+<div><b>3. 小テストで確認</b><p class="hint">4択か記述を選んでスタート。終わったら間違えた問題だけ再テストできます。</p></div>
+<div><b>4. 問題を編集</b><p class="hint">編集タブで1問ずつ、またはExcelからまとめて貼り付けて追加。内容は自動で保存されます。</p></div></div>`;
+
+/* ---- events ---- */
+const nextCard=d=>{if(!fc.ids.length)return;fc.i=Math.max(0,Math.min(fc.ids.length-1,fc.i+d));fc.flip=false;render()};
+const mark=k=>{const s=cur(),c=s&&s.cards.find(x=>x.id===fc.ids[fc.i]);if(!c)return;c.known=k;save();
+  if(fcOpt.only&&k){fc.ids.splice(fc.i,1);if(fc.i>=fc.ids.length)fc.i=Math.max(0,fc.ids.length-1);fc.flip=false;render()}
+  else if(fc.i<fc.ids.length-1)nextCard(1);else{fc.flip=false;render();toast(k?'最後のカードです。おつかれさま！':'最後のカードです')}};
+document.addEventListener('click',e=>{
+  const t=e.target.closest('button,[data-set],#flip');if(!t)return;
+  if(t.dataset.set){S.cur=t.dataset.set;fc=null;qz={...qz,phase:'setup'};save();render();return}
+  if(t.classList.contains('tab')){view=t.dataset.v;if(view==='quiz'&&qz.phase!=='run')qz.phase='setup';render();return}
+  if(t.dataset.fmt){qz.fmt=t.dataset.fmt;render();return}
+  if(t.dataset.num!==undefined){qz.num=+t.dataset.num;render();return}
+  if(t.dataset.ch!==undefined){const it=qz.items[qz.i];if(it.ans!==null)return;it.ans=it.ch[+t.dataset.ch];it.ok=norm(it.ans)===norm(it.a);render();return}
+  if(t.dataset.del){const s=cur(),i=s.cards.findIndex(c=>c.id===t.dataset.del);if(i<0)return;const [rm]=s.cards.splice(i,1);S.sample=false;save();render();toast('問題を削除しました',()=>{s.cards.splice(i,0,rm);save()});return}
+  switch(t.id){
+    case'flip':fc.flip=!fc.flip;$('flip').classList.toggle('on',fc.flip);break;
+    case'prev':nextCard(-1);break;case'next':nextCard(1);break;
+    case'mkYes':mark(true);break;case'mkNo':mark(false);break;
+    case'resetKnown':{const s=cur();const old=s.cards.map(c=>c.known);s.cards.forEach(c=>c.known=false);save();fc=null;render();toast('覚えた印をリセットしました',()=>{s.cards.forEach((c,i)=>c.known=old[i]);save();fc=null});break}
+    case'newSet':{const s={id:uid(),name:'新しいセット',cards:[{id:uid(),q:'',a:'',known:false}]};S.sets.push(s);S.cur=s.id;fc=null;view='edit';save();render();const n=$('setName');if(n){n.focus();n.select()}break}
+    case'go':startQuiz();break;
+    case'qnext':if(qz.i+1<qz.items.length){qz.i++}else qz.phase='done';render();break;
+    case'quit':case'toSetup':qz.phase='setup';render();break;
+    case'override':{const it=qz.items[qz.i];it.ok=true;render();break}
+    case'again':startQuiz(qz.items.map(x=>x.id));break;
+    case'retryMiss':startQuiz(qz.items.filter(x=>!x.ok).map(x=>x.id));break;
+    case'addRow':{const s=cur(),c={id:uid(),q:'',a:'',known:false};s.cards.push(c);save();render();$('q-'+c.id)?.focus();break}
+    case'bulkAdd':{const s=cur(),txt=$('bulk').value;let n=0;for(const line of txt.split(/\r?\n/)){if(!line.trim())continue;const m=line.split(/\t|,|，/);const q=(m[0]||'').trim(),a=m.slice(1).join(',').trim();if(!q)continue;s.cards=s.cards.filter(c=>c.q.trim()||c.a.trim());s.cards.push({id:uid(),q,a,known:false});n++}if(n){S.sample=false;save();fc=null;render();toast(n+'問を追加しました')}else toast('追加できる行がありませんでした');break}
+    case'copyOut':{const s=cur();const out=s.cards.filter(c=>c.q.trim()).map(c=>c.q.replace(/[\t\n]/g,' ')+','+c.a.replace(/[\t\n]/g,' ')).join('\n');(navigator.clipboard?.writeText(out)||Promise.reject()).then(()=>toast('コピーしました')).catch(()=>{$('bulk').value=out;toast('コピーできなかったので、左の欄に表示しました')});break}
+    case'delSet':{if(t.dataset.sure!=='1'){t.dataset.sure='1';t.textContent='本当に削除する？（もう一度押す）';setTimeout(()=>{if(t.isConnected){t.dataset.sure='';t.textContent='このセットを削除'}},4000);break}
+      const i=S.sets.findIndex(x=>x.id===S.cur),[rm]=S.sets.splice(i,1);S.cur=S.sets[0]?.id||null;fc=null;save();render();toast('セットを削除しました',()=>{S.sets.splice(i,0,rm);S.cur=rm.id;save();fc=null});break}
+  }
+});
+document.addEventListener('change',e=>{
+  const t=e.target;
+  if(t.id==='oShuf'||t.id==='oOnly'||t.id==='oRev'){fcOpt.shuf=$('oShuf').checked;fcOpt.only=$('oOnly').checked;fcOpt.rev=$('oRev').checked;fc=null;render()}
+});
+document.addEventListener('input',e=>{
+  const t=e.target,s=cur();if(!s)return;
+  if(t.id==='setName'){s.name=t.value;$('chips').innerHTML=chips();save();return}
+  const row=t.closest('.row');if(!row)return;
+  const c=s.cards.find(x=>x.id===row.dataset.cid);if(!c)return;
+  if(t.classList.contains('q'))c.q=t.value;else if(t.classList.contains('a'))c.a=t.value;
+  S.sample=false;fc=null;save();
+});
+document.addEventListener('submit',e=>{
+  if(e.target.id!=='tf')return;e.preventDefault();
+  const it=qz.items[qz.i];const v=$('tin').value;if(!v.trim())return;
+  const alts=it.a.split(/[・／\/]/).map(norm).filter(Boolean);
+  it.ans=v;it.ok=norm(v)===norm(it.a)||alts.includes(norm(v));render();
+});
+document.addEventListener('keydown',e=>{
+  if(view!=='card'||/INPUT|TEXTAREA/.test(e.target.tagName))return;
+  if(e.key===' '||e.key==='Enter'){if(e.target.id==='flip'||e.target===document.body){e.preventDefault();fc.flip=!fc.flip;$('flip')?.classList.toggle('on',fc.flip)}}
+  else if(e.key==='ArrowRight')nextCard(1);else if(e.key==='ArrowLeft')nextCard(-1);
+});
+render();
+}
+</script>
+</body>
+</html>
