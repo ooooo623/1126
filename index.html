@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
 <meta name="theme-color" content="#2457d6">
 <meta name="description" content="中高生向けの単語カード＆小テストアプリ。データはこの端末のブラウザに保存されます。">
 <title>単語カード帳</title>
@@ -102,13 +103,32 @@ main h2{font-size:clamp(22px,3vw,28px);line-height:1.15;margin:0 0 12px}
 .toast .btn{background:var(--hi);color:#141a2e}
 .empty{text-align:center;padding:40px 16px;background:var(--card);color:var(--cardink);border-radius:18px}
 .sync{font-size:13px;opacity:.8}
+.lock{margin-top:22px;background:rgba(255,255,255,.12);border-radius:16px;padding:22px;max-width:560px}
+.lock h2{margin:0 0 6px;font-size:22px}.lock p{margin:0;opacity:.9}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(9em,1fr));gap:10px;margin-bottom:22px}
+.stat{background:var(--soft);border-radius:14px;padding:14px}
+.stat b{display:block;font:900 30px/1.1 "Zen Maru Gothic",sans-serif}
+.stat span{font-size:13px;color:var(--sub)}
+.bars{display:grid;gap:10px;margin-bottom:22px}
+.bar{display:grid;gap:4px}
+.bar .h{display:flex;justify-content:space-between;gap:8px;font-size:14px}
+.bar .t{height:10px;background:var(--soft);border-radius:9px;overflow:hidden}
+.bar .t i{display:block;height:100%;border-radius:9px;background:var(--ok)}
+.bar.lo .t i{background:var(--ng)}.bar.mid .t i{background:var(--hi)}
+.adv{list-style:none;padding:0;margin:0 0 22px;display:grid;gap:8px}
+.adv li{background:color-mix(in srgb,var(--hi) 22%,var(--bg));border-radius:12px;padding:12px 14px}
+.weak{list-style:none;padding:0;margin:0 0 22px;display:grid;gap:8px}
+.weak li{border-left:4px solid var(--ng);background:var(--soft);padding:10px 14px;border-radius:0 10px 10px 0;overflow-wrap:anywhere}
+.weak span{display:block;color:var(--sub);font-size:14px}
+main h3{font-size:18px;margin:0 0 10px}
 @media(max-width:760px){.ed{grid-template-columns:minmax(0,1fr)}}
 .panel .btn:not(.y):not(.ng){background:var(--bg);border:2px solid var(--line)}
 @media(max-width:520px){
  .choices{grid-template-columns:minmax(0,1fr)}
  .row{grid-template-columns:minmax(0,1fr) auto;gap:6px;padding:10px;background:var(--soft);border-radius:12px}
  .row .n{display:none}.row .a{grid-column:1}.row .del{grid-row:1/3;grid-column:2}
- .tab{padding:10px 13px}
+ .tabs{display:grid;grid-template-columns:repeat(4,1fr);width:100%}.tab{padding:10px 4px;font-size:14px}
+ .stats{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}.stat{padding:10px}.stat b{font-size:22px}.stat span{font-size:11px}
  .top .sync{display:block}
  .chips{gap:6px}.chip{padding:6px 13px;font-size:14px;min-height:40px}
  .ctl.cardctl{display:grid;grid-template-columns:1fr 1fr}
@@ -124,36 +144,31 @@ main h2{font-size:clamp(22px,3vw,28px);line-height:1.15;margin:0 0 12px}
   <div class="wrap">
     <h1>単語カード帳</h1>
     <p>問題セットを作って、カードで覚えて、小テストで確かめる。<span class="sync" id="sync"></span></p>
+    <div class="lock" id="lock" hidden><h2 id="lockT">QRコードから開いてください</h2><p id="lockM">このアプリは、先生が配ったQRコードを読み取って開いたときだけ使えます。</p></div>
+    <div id="app" hidden>
     <div class="chips" id="chips"></div>
     <div class="tabs" role="tablist">
       <button class="tab" role="tab" id="t-card" data-v="card">カード</button>
       <button class="tab" role="tab" id="t-quiz" data-v="quiz">小テスト</button>
+      <button class="tab" role="tab" id="t-ana" data-v="ana">分析</button>
       <button class="tab" role="tab" id="t-edit" data-v="edit">編集</button>
     </div>
     <div class="stage" id="stage"></div>
+    </div>
   </div>
 </header>
 <main class="band"><div class="wrap" id="below"></div></main>
 <div class="toast" id="toast" hidden><span id="toastMsg"></span><button class="btn sm" id="toastBtn">元に戻す</button></div>
 <script>
 {
+const ENC=/*ENC*/{"it": 200000, "salt": "pthwRnqBcUqx21yGq/k52g==", "iv": "pw4OgGpsghG5nV9A", "ct": "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"}/*/ENC*/;
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const uid=()=>Math.random().toString(36).slice(2,9);
-const mk=(name,pairs)=>({id:uid(),name,cards:pairs.map(([q,a])=>({id:uid(),q,a,known:false}))});
-const sample=()=>({cur:null,sets:[
-  mk('中1数学 正負の数',[['(−3)+(+5)','2'],['(−4)×(−6)','24'],['(−12)÷3','−4'],['−2²','−4'],['(−2)²','4'],['5−(−8)','13'],['|−7|（絶対値）','7'],['(−1)³','−1']]),
-  mk('中2理科 化学式',[['水','H₂O'],['二酸化炭素','CO₂'],['酸素','O₂'],['塩化ナトリウム','NaCl'],['アンモニア','NH₃'],['水素','H₂'],['酸化銅','CuO'],['炭酸水素ナトリウム','NaHCO₃']]),
-  mk('中学社会 歴史の年号',[['大化の改新','645年'],['平城京に都を移す','710年'],['平安京に都を移す','794年'],['応仁の乱が始まる','1467年'],['鉄砲が伝わる','1543年'],['関ヶ原の戦い','1600年'],['五箇条の御誓文','1868年'],['日本国憲法の施行','1947年']]),
-  mk('高校英語 英単語',[['abandon','見捨てる・断念する'],['acquire','獲得する・身につける'],['consequence','結果・影響'],['essential','不可欠な'],['maintain','維持する'],['reluctant','気が進まない'],['significant','重要な・かなりの'],['obtain','手に入れる']])
-],sample:true});
-const LS='tango-cards-v1';
-let S=null;
-try{const r=localStorage.getItem(LS);if(r)S=JSON.parse(r)}catch(e){}
-if(!S||!Array.isArray(S.sets))S=sample();
-if(!S.sets.find(x=>x.id===S.cur))S.cur=S.sets[0]?.id||null;
-let view='card';
-const cur=()=>S.sets.find(x=>x.id===S.cur);
+const LS='tango-cards-v1',KEYLS='tango-key';
 const $=id=>document.getElementById(id);
+let S=null,view='card';
+const cur=()=>S.sets.find(x=>x.id===S.cur);
+const clone=b=>({id:b.id,name:b.name,cards:b.cards.map(c=>({id:c.id,q:c.q,a:c.a,known:false}))});
 
 /* ---- saving: browser only (localStorage) ---- */
 const setSync=t=>{$('sync').textContent=t?' ・ '+t:''};
@@ -161,7 +176,42 @@ const save=()=>{
   try{localStorage.setItem(LS,JSON.stringify(S));setSync('この端末に保存済み')}
   catch(e){setSync('保存できません（プライベートモードなど）')}
 };
-setSync('この端末に保存されます');
+
+/* ---- unlock: the key travels only inside the QR code's URL (#k=...) ---- */
+const b64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+const decrypt=async pass=>{
+  const base=await crypto.subtle.importKey('raw',new TextEncoder().encode(pass),'PBKDF2',false,['deriveKey']);
+  const key=await crypto.subtle.deriveKey({name:'PBKDF2',salt:b64(ENC.salt),iterations:ENC.it,hash:'SHA-256'},base,{name:'AES-GCM',length:256},false,['decrypt']);
+  const pt=await crypto.subtle.decrypt({name:'AES-GCM',iv:b64(ENC.iv)},key,b64(ENC.ct));
+  return JSON.parse(new TextDecoder().decode(pt));
+};
+const lock=(t,m)=>{if(t)$('lockT').textContent=t;if(m)$('lockM').textContent=m;$('lock').hidden=false;$('app').hidden=true;$('below').innerHTML=''};
+(async()=>{
+  const m=location.hash.match(/k=([^&]+)/);
+  const fromQr=m?decodeURIComponent(m[1]):null;
+  let stored=null;try{stored=localStorage.getItem(KEYLS)}catch(e){}
+  if(!ENC||!window.crypto?.subtle){lock('このブラウザでは開けません','SafariやChromeなど、新しいブラウザで開いてください。');return}
+  const keys=[...new Set([fromQr,stored].filter(Boolean))];
+  if(!keys.length){lock();return}
+  for(const k of keys){
+    let data;try{data=await decrypt(k)}catch(e){continue}
+    let kept=false;try{localStorage.setItem(KEYLS,k);kept=true}catch(e){}
+    if(m&&kept)history.replaceState(null,'',location.pathname+location.search);
+    start(data);return;
+  }
+  lock('QRコードが正しくありません','QRコードが古いか、読み取りに失敗しました。先生から最新のQRコードをもらって、もう一度読み取ってください。');
+})();
+
+const start=data=>{
+  const B=data.sets||[];
+  try{const r=localStorage.getItem(LS);if(r)S=JSON.parse(r)}catch(e){}
+  if(!S||!Array.isArray(S.sets))S={cur:null,sets:B.map(clone),sample:true};
+  else for(const b of B)if(!S.sets.some(x=>x.id===b.id||x.name===b.name)&&!(S.removed||[]).includes(b.id))S.sets.push(clone(b));
+  S.removed=S.removed||[];S.stats=S.stats||{};S.hist=S.hist||[];S.name=S.name||'';
+  if(!cur())S.cur=S.sets[0]?.id||null;
+  $('lock').hidden=true;$('app').hidden=false;
+  save();render();
+};
 
 /* ---- toast with undo ---- */
 let undoFn=null,toastT=null;
@@ -174,9 +224,11 @@ const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(M
 const fcOpt={shuf:false,only:false,rev:false};
 const buildFc=()=>{const s=cur();if(!s){fc={ids:[],i:0,flip:false};return}let ids=s.cards.filter(c=>c.q.trim()||c.a.trim()).filter(c=>!fcOpt.only||!c.known).map(c=>c.id);if(fcOpt.shuf)ids=shuffle(ids);fc={ids,i:0,flip:false,set:s.id}};
 
-/* ---- quiz state ---- */
+/* ---- answer checking ---- */
 let qz={phase:'setup',fmt:'mc',num:10};
-const norm=s=>String(s).normalize('NFKC').toLowerCase().replace(/[\s　・、,。.]/g,'').replace(/[−‐ー–—]/g,'-');
+const norm=s=>String(s).normalize('NFKC').toLowerCase().replace(/ルート/g,'√').replace(/<=/g,'≦').replace(/>=/g,'≧').replace(/[\s　・、,。]/g,'').replace(/[−‐ー–—]/g,'-');
+const loose=s=>norm(s).replace(/^(およそ|約)/,'').replace(/^[a-z]=/,'').replace(/(cm[23]?|個|°|度|通り|円|倍|年)$/,'');
+const isRight=(v,a)=>{const alts=[a,...a.split(/[・／]/)].filter(x=>x.trim());return alts.some(x=>norm(v)===norm(x)||loose(v)===loose(x))};
 const startQuiz=(onlyIds)=>{
   const s=cur();const pool=s.cards.filter(c=>c.q.trim()&&c.a.trim());
   let picks=onlyIds?pool.filter(c=>onlyIds.includes(c.id)):shuffle(pool);
@@ -187,8 +239,10 @@ const startQuiz=(onlyIds)=>{
     let ch=null;
     if(fmt==='mc'){const others=shuffle([...new Set(pool.filter(o=>o.id!==c.id&&norm(o.a)!==norm(c.a)).map(o=>o.a))]).slice(0,3);ch=shuffle([c.a,...others])}
     return{id:c.id,q:c.q,a:c.a,ch,ans:null,ok:null}});
-  qz={...qz,phase:'run',items,i:0,fmtUsed:fmt};render();
+  qz={...qz,phase:'run',items,i:0,fmtUsed:fmt,setId:s.id};render();
 };
+/* record each answer once; "正解にする" upgrades a recorded miss */
+const record=it=>{const st=S.stats[it.id]||(S.stats[it.id]={n:0,ok:0});if(!it.rec){st.n++;if(it.ok)st.ok++;it.rec=true}else if(it.ok&&!it.recOk)st.ok++;it.recOk=it.ok;st.at=Date.now();save()};
 
 /* ---- render ---- */
 const chips=()=>S.sets.map(s=>`<button class="chip" data-set="${esc(s.id)}" aria-pressed="${s.id===S.cur}">${esc(s.name||'無題のセット')}</button>`).join('')+`<button class="chip add" id="newSet">＋ 新しいセット</button>`;
@@ -224,7 +278,7 @@ const quizView=()=>{
     const it=qz.items[qz.i],done=it.ans!==null;
     let body;
     if(qz.fmtUsed==='mc')body=`<div class="choices">${it.ch.map((t,k)=>{let cl='';if(done){if(norm(t)===norm(it.a))cl='r';else if(t===it.ans)cl='w'}return`<button class="choice ${cl}" data-ch="${k}" ${done?'disabled':''}>${esc(t)}</button>`}).join('')}</div>`;
-    else body=`<form class="typed" id="tf"><input type="text" id="tin" autocomplete="off" placeholder="答えを入力" ${done?'disabled':''} value="${done?esc(it.ans):''}"><button class="btn y" ${done?'disabled':''}>答え合わせ</button></form>`;
+    else body=`<form class="typed" id="tf"><input type="text" id="tin" autocomplete="off" placeholder="答えを入力（√は「ルート」でもOK）" ${done?'disabled':''} value="${done?esc(it.ans):''}"><button class="btn y" ${done?'disabled':''}>答え合わせ</button></form>`;
     const fb=done?(it.ok?`<div class="fb r">○ 正解！</div>`:`<div class="fb w">× 正解は「${esc(it.a)}」 ${qz.fmtUsed==='type'?'<button class="btn sm" id="override">正解にする</button>':''}</div>`):'<div class="fb"></div>';
     const sc=qz.items.filter(x=>x.ok).length;
     return`<div class="qbox"><div class="qn"><span>第${qz.i+1}問 / ${qz.items.length}問</span><span>正解 ${sc}</span></div><div class="q">${esc(it.q)}</div>${body}${fb}
@@ -236,6 +290,54 @@ const quizView=()=>{
   <div class="ctl">${miss.length?'<button class="btn ng" id="retryMiss">間違えた問題だけ再テスト</button>':''}<button class="btn y" id="again">もう一度</button><button class="btn" id="toSetup">設定を変える</button></div></div>`;
 };
 
+/* ---- analysis ---- */
+const pct=(a,b)=>b?Math.round(a/b*100):0;
+const analyze=()=>{
+  const rows=S.sets.map(s=>{let n=0,ok=0;const cs=[];for(const c of s.cards){const st=S.stats[c.id];if(st&&st.n){n+=st.n;ok+=st.ok;cs.push({s,c,st})}}return{s,n,ok,cs}});
+  const n=rows.reduce((t,r)=>t+r.n,0),ok=rows.reduce((t,r)=>t+r.ok,0);
+  const weak=rows.flatMap(r=>r.cs).filter(x=>x.st.ok<x.st.n).sort((a,b)=>a.st.ok/a.st.n-b.st.ok/b.st.n||b.st.n-a.st.n);
+  return{rows,n,ok,weak,tested:rows.filter(r=>r.n).sort((a,b)=>a.ok/a.n-b.ok/b.n)};
+};
+const advice=A=>{
+  const out=[];
+  if(!A.n)return['小テストを解くと、ここに単元ごとの正答率と苦手な問題が出ます。'];
+  const w=A.tested[0],wp=pct(w.ok,w.n);
+  if(wp<60)out.push(`「${w.s.name}」の正答率が${wp}%と低めです。カードで答えを確認してから、下の「苦手問題だけ小テスト」で解き直しましょう。`);
+  else if(A.tested.every(r=>r.ok/r.n>=.8))out.push('どのセットも正答率80%以上です。記述式や「全部」の問題数で力試しをしてみましょう。');
+  else out.push(`次は「${w.s.name}」（${wp}%）を重点的に復習すると、全体の正答率が上がります。`);
+  const last=S.hist[S.hist.length-1];
+  if(last){const same=S.hist.filter(h=>h.set===last.set).slice(-3).map(h=>h.sc/h.n);
+    if(same.length>=2){const d=same[same.length-1]-same[same.length-2];
+      if(d>0)out.push(`「${last.name}」は前回より正答率が上がりました。この調子！`);
+      else if(d<0)out.push(`「${last.name}」は前回より正答率が下がりました。間違えた問題を見直しましょう。`)}}
+  const rep=A.weak.find(x=>x.st.n>=2&&x.st.ok===0);
+  if(rep)out.push(`「${rep.c.q}」は${rep.st.n}回とも不正解です。答え「${rep.c.a}」を覚え直しましょう。`);
+  const untested=A.rows.filter(r=>!r.n&&r.s.cards.some(c=>c.q.trim()&&c.a.trim())).map(r=>`「${r.s.name}」`);
+  if(untested.length)out.push(`まだ小テストをしていないセット：${untested.slice(0,3).join('、')}${untested.length>3?' など':''}`);
+  return out;
+};
+const report=A=>{
+  const d=new Date(),day=`${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}`;
+  const L=[`【単語カード帳 成績】`,`名前：${S.name.trim()||'（未入力）'}`,`作成日：${day}`,`小テスト回数：${S.hist.length}回／全体の正答率：${pct(A.ok,A.n)}%（${A.ok}/${A.n}）`,`■セット別の正答率`];
+  for(const r of A.rows)if(r.n)L.push(`・${r.s.name}：${pct(r.ok,r.n)}%（${r.ok}/${r.n}）`);
+  if(A.weak.length){L.push('■間違えたことがある問題（正答率の低い順）');for(const x of A.weak.slice(0,15))L.push(`・[${x.s.name}] ${x.c.q.replace(/\n/g,' ')}（答え：${x.c.a}）… ${x.st.ok}/${x.st.n}`)}
+  return L.join('\n');
+};
+const anaView=()=>{
+  const A=analyze(),adv=advice(A),w=A.tested[0];
+  const weakIds=w?A.weak.filter(x=>x.s.id===w.s.id).map(x=>x.c.id):[];
+  return`<h2>学習の分析</h2>
+  <div class="stats"><div class="stat"><span>全体の正答率</span><b>${A.n?pct(A.ok,A.n)+'%':'—'}</b></div><div class="stat"><span>解いた問題数</span><b>${A.n}</b></div><div class="stat"><span>テスト回数</span><b>${S.hist.length}</b></div></div>
+  <h3>アドバイス</h3><ul class="adv">${adv.map(t=>`<li>${esc(t)}</li>`).join('')}</ul>
+  ${weakIds.length?`<div class="ctl" style="justify-content:flex-start;margin:-10px 0 22px"><button class="btn ng" id="weakQuiz" data-wset="${esc(w.s.id)}">「${esc(w.s.name)}」の苦手問題だけ小テスト</button></div>`:''}
+  ${A.tested.length?`<h3>セット別の正答率（低い順）</h3><div class="bars">${A.tested.map(r=>{const p=pct(r.ok,r.n);return`<div class="bar ${p<60?'lo':p<80?'mid':''}"><div class="h"><span>${esc(r.s.name)}</span><b>${p}%（${r.ok}/${r.n}）</b></div><div class="t"><i style="width:${p}%"></i></div></div>`}).join('')}</div>`:''}
+  ${A.weak.length?`<h3>苦手な問題</h3><ul class="weak">${A.weak.slice(0,5).map(x=>`<li><b>${esc(x.c.q)}</b><span>答え：${esc(x.c.a)} ／ ${x.st.n}回中${x.st.ok}回正解 ・ ${esc(x.s.name)}</span></li>`).join('')}</ul>`:''}
+  <div class="panel"><h3>先生に提出する</h3><p class="hint">名前を入れて「成績をコピー」を押すと、成績のまとめがコピーされます。先生に指示された方法（Classroomなど）に貼り付けて提出してください。</p>
+  <div><label class="lbl" for="stName">名前（または出席番号）</label><input type="text" id="stName" value="${esc(S.name)}" placeholder="例：3年2組 15番"></div>
+  <button class="btn y" id="copyReport">成績をコピー</button><textarea id="reportOut" rows="6" readonly hidden></textarea>
+  <button class="btn sm" id="resetStats" style="justify-self:start">成績の記録をリセット</button></div>`;
+};
+
 const editView=()=>{
   const s=cur();
   if(!s)return`<div class="empty"><p>「＋ 新しいセット」から問題セットを作りましょう。</p></div>`;
@@ -243,7 +345,7 @@ const editView=()=>{
   <label class="lbl" for="setName">セット名</label><input type="text" id="setName" value="${esc(s.name)}" style="margin-bottom:14px">
   <div class="rows">${s.cards.map((c,i)=>`<div class="row" data-cid="${esc(c.id)}"><span class="n">${i+1}</span><input type="text" class="q" id="q-${esc(c.id)}" aria-label="問題${i+1}" placeholder="問題" value="${esc(c.q)}"><input type="text" class="a" id="a-${esc(c.id)}" aria-label="答え${i+1}" placeholder="答え" value="${esc(c.a)}"><button class="del" data-del="${esc(c.id)}" aria-label="削除">×</button></div>`).join('')}</div>
   <div class="ctl" style="justify-content:flex-start"><button class="btn y" id="addRow">＋ 問題を追加</button></div>
-  ${S.sample?'<p class="hint">最初に入っているのはサンプル問題です。自由に書きかえたり削除したりできます。</p>':''}</section>
+  ${S.sample?'<p class="hint">最初に入っているのは用意された問題です。自由に書きかえたり削除したりできます。</p>':''}</section>
   <aside class="panel"><h3>まとめて追加</h3><p class="hint">1行に1問、「問題」と「答え」をタブかカンマで区切ります。Excelやスプレッドシートの2列をそのまま貼り付けてもOKです。</p>
   <textarea id="bulk" rows="6" placeholder="光合成で作られる気体,酸素&#10;日本の首都,東京"></textarea><button class="btn y" id="bulkAdd">追加する</button>
   <h3 style="margin-top:8px">書き出し</h3><p class="hint">このセットを「問題,答え」の形でコピーします。バックアップや共有に。</p><button class="btn" id="copyOut">コピーする</button>
@@ -251,31 +353,35 @@ const editView=()=>{
 };
 
 const render=()=>{
+  if(!S)return;
   $('chips').innerHTML=chips();
   for(const t of document.querySelectorAll('.tab'))t.setAttribute('aria-selected',t.dataset.v===view);
   if(view==='card'){$('stage').innerHTML=cardView();$('below').innerHTML=howTo()}
   else if(view==='quiz'){$('stage').innerHTML=quizView();$('below').innerHTML=howTo()}
+  else if(view==='ana'){$('stage').innerHTML='';$('below').innerHTML=anaView()}
   else{$('stage').innerHTML='';$('below').innerHTML=editView()}
   if(view==='quiz'&&qz.phase==='run'&&qz.fmtUsed==='type'){const t=$('tin');if(t&&!t.disabled)t.focus({preventScroll:true})}
 };
 const howTo=()=>`<h2>使い方</h2><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(15em,1fr));gap:18px">
-<div><b>1. セットを選ぶ・作る</b><p class="hint">上のボタンで教科を切り替え。「＋ 新しいセット」で自分のセットを作れます。</p></div>
+<div><b>1. セットを選ぶ・作る</b><p class="hint">上のボタンで単元を切り替え。「＋ 新しいセット」で自分のセットを作れます。</p></div>
 <div><b>2. カードで覚える</b><p class="hint">カードをタップ（またはスペースキー）でめくり、○か×をつけます。「未習得だけ」で苦手なカードに集中。</p></div>
 <div><b>3. 小テストで確認</b><p class="hint">4択か記述を選んでスタート。終わったら間違えた問題だけ再テストできます。</p></div>
-<div><b>4. 問題を編集</b><p class="hint">編集タブで1問ずつ、またはExcelからまとめて貼り付けて追加。内容は自動で保存されます。</p></div></div>`;
+<div><b>4. 分析で弱点を知る</b><p class="hint">分析タブで単元ごとの正答率と苦手な問題を確認。「成績をコピー」で先生に提出できます。</p></div></div>`;
 
 /* ---- events ---- */
 const nextCard=d=>{if(!fc.ids.length)return;fc.i=Math.max(0,Math.min(fc.ids.length-1,fc.i+d));fc.flip=false;render()};
 const mark=k=>{const s=cur(),c=s&&s.cards.find(x=>x.id===fc.ids[fc.i]);if(!c)return;c.known=k;save();
   if(fcOpt.only&&k){fc.ids.splice(fc.i,1);if(fc.i>=fc.ids.length)fc.i=Math.max(0,fc.ids.length-1);fc.flip=false;render()}
   else if(fc.i<fc.ids.length-1)nextCard(1);else{fc.flip=false;render();toast(k?'最後のカードです。おつかれさま！':'最後のカードです')}};
+const copyText=(txt,ok,fallback)=>(navigator.clipboard?.writeText(txt)||Promise.reject()).then(()=>toast(ok)).catch(fallback);
 document.addEventListener('click',e=>{
+  if(!S)return;
   const t=e.target.closest('button,[data-set],#flip');if(!t)return;
   if(t.dataset.set){S.cur=t.dataset.set;fc=null;qz={...qz,phase:'setup'};save();render();return}
   if(t.classList.contains('tab')){view=t.dataset.v;if(view==='quiz'&&qz.phase!=='run')qz.phase='setup';render();return}
   if(t.dataset.fmt){qz.fmt=t.dataset.fmt;render();return}
   if(t.dataset.num!==undefined){qz.num=+t.dataset.num;render();return}
-  if(t.dataset.ch!==undefined){const it=qz.items[qz.i];if(it.ans!==null)return;it.ans=it.ch[+t.dataset.ch];it.ok=norm(it.ans)===norm(it.a);render();return}
+  if(t.dataset.ch!==undefined){const it=qz.items[qz.i];if(it.ans!==null)return;it.ans=it.ch[+t.dataset.ch];it.ok=norm(it.ans)===norm(it.a);record(it);render();return}
   if(t.dataset.del){const s=cur(),i=s.cards.findIndex(c=>c.id===t.dataset.del);if(i<0)return;const [rm]=s.cards.splice(i,1);S.sample=false;save();render();toast('問題を削除しました',()=>{s.cards.splice(i,0,rm);save()});return}
   switch(t.id){
     case'flip':fc.flip=!fc.flip;$('flip').classList.toggle('on',fc.flip);break;
@@ -284,16 +390,20 @@ document.addEventListener('click',e=>{
     case'resetKnown':{const s=cur();const old=s.cards.map(c=>c.known);s.cards.forEach(c=>c.known=false);save();fc=null;render();toast('覚えた印をリセットしました',()=>{s.cards.forEach((c,i)=>c.known=old[i]);save();fc=null});break}
     case'newSet':{const s={id:uid(),name:'新しいセット',cards:[{id:uid(),q:'',a:'',known:false}]};S.sets.push(s);S.cur=s.id;fc=null;view='edit';save();render();const n=$('setName');if(n){n.focus();n.select()}break}
     case'go':startQuiz();break;
-    case'qnext':if(qz.i+1<qz.items.length){qz.i++}else qz.phase='done';render();break;
+    case'qnext':if(qz.i+1<qz.items.length){qz.i++}else{qz.phase='done';const s=S.sets.find(x=>x.id===qz.setId);S.hist.push({set:qz.setId,name:s?.name||'',at:Date.now(),n:qz.items.length,sc:qz.items.filter(x=>x.ok).length});S.hist=S.hist.slice(-200);save()}render();break;
     case'quit':case'toSetup':qz.phase='setup';render();break;
-    case'override':{const it=qz.items[qz.i];it.ok=true;render();break}
+    case'override':{const it=qz.items[qz.i];it.ok=true;record(it);render();break}
     case'again':startQuiz(qz.items.map(x=>x.id));break;
     case'retryMiss':startQuiz(qz.items.filter(x=>!x.ok).map(x=>x.id));break;
+    case'weakQuiz':{const A=analyze(),id=t.dataset.wset,ids=A.weak.filter(x=>x.s.id===id).map(x=>x.c.id);S.cur=id;fc=null;view='quiz';save();startQuiz(ids);window.scrollTo({top:0});break}
+    case'copyReport':{const txt=report(analyze());copyText(txt,'成績をコピーしました。先生に提出してください',()=>{const o=$('reportOut');o.value=txt;o.hidden=false;o.select();toast('コピーできなかったので、下の欄から選んでコピーしてください')});break}
+    case'resetStats':{if(t.dataset.sure!=='1'){t.dataset.sure='1';t.textContent='本当にリセットする？（もう一度押す）';setTimeout(()=>{if(t.isConnected){t.dataset.sure='';t.textContent='成績の記録をリセット'}},4000);break}
+      const os=S.stats,oh=S.hist;S.stats={};S.hist=[];save();render();toast('成績の記録をリセットしました',()=>{S.stats=os;S.hist=oh;save()});break}
     case'addRow':{const s=cur(),c={id:uid(),q:'',a:'',known:false};s.cards.push(c);save();render();$('q-'+c.id)?.focus();break}
     case'bulkAdd':{const s=cur(),txt=$('bulk').value;let n=0;for(const line of txt.split(/\r?\n/)){if(!line.trim())continue;const m=line.split(/\t|,|，/);const q=(m[0]||'').trim(),a=m.slice(1).join(',').trim();if(!q)continue;s.cards=s.cards.filter(c=>c.q.trim()||c.a.trim());s.cards.push({id:uid(),q,a,known:false});n++}if(n){S.sample=false;save();fc=null;render();toast(n+'問を追加しました')}else toast('追加できる行がありませんでした');break}
-    case'copyOut':{const s=cur();const out=s.cards.filter(c=>c.q.trim()).map(c=>c.q.replace(/[\t\n]/g,' ')+','+c.a.replace(/[\t\n]/g,' ')).join('\n');(navigator.clipboard?.writeText(out)||Promise.reject()).then(()=>toast('コピーしました')).catch(()=>{$('bulk').value=out;toast('コピーできなかったので、左の欄に表示しました')});break}
+    case'copyOut':{const s=cur();const out=s.cards.filter(c=>c.q.trim()).map(c=>c.q.replace(/[\t\n]/g,' ')+','+c.a.replace(/[\t\n]/g,' ')).join('\n');copyText(out,'コピーしました',()=>{$('bulk').value=out;toast('コピーできなかったので、左の欄に表示しました')});break}
     case'delSet':{if(t.dataset.sure!=='1'){t.dataset.sure='1';t.textContent='本当に削除する？（もう一度押す）';setTimeout(()=>{if(t.isConnected){t.dataset.sure='';t.textContent='このセットを削除'}},4000);break}
-      const i=S.sets.findIndex(x=>x.id===S.cur),[rm]=S.sets.splice(i,1);S.cur=S.sets[0]?.id||null;fc=null;save();render();toast('セットを削除しました',()=>{S.sets.splice(i,0,rm);S.cur=rm.id;save();fc=null});break}
+      const i=S.sets.findIndex(x=>x.id===S.cur),[rm]=S.sets.splice(i,1);S.removed.push(rm.id);S.cur=S.sets[0]?.id||null;fc=null;save();render();toast('セットを削除しました',()=>{S.sets.splice(i,0,rm);S.removed=S.removed.filter(x=>x!==rm.id);S.cur=rm.id;save();fc=null});break}
   }
 });
 document.addEventListener('change',e=>{
@@ -301,7 +411,10 @@ document.addEventListener('change',e=>{
   if(t.id==='oShuf'||t.id==='oOnly'||t.id==='oRev'){fcOpt.shuf=$('oShuf').checked;fcOpt.only=$('oOnly').checked;fcOpt.rev=$('oRev').checked;fc=null;render()}
 });
 document.addEventListener('input',e=>{
-  const t=e.target,s=cur();if(!s)return;
+  if(!S)return;
+  const t=e.target;
+  if(t.id==='stName'){S.name=t.value;save();return}
+  const s=cur();if(!s)return;
   if(t.id==='setName'){s.name=t.value;$('chips').innerHTML=chips();save();return}
   const row=t.closest('.row');if(!row)return;
   const c=s.cards.find(x=>x.id===row.dataset.cid);if(!c)return;
@@ -311,15 +424,13 @@ document.addEventListener('input',e=>{
 document.addEventListener('submit',e=>{
   if(e.target.id!=='tf')return;e.preventDefault();
   const it=qz.items[qz.i];const v=$('tin').value;if(!v.trim())return;
-  const alts=it.a.split(/[・／\/]/).map(norm).filter(Boolean);
-  it.ans=v;it.ok=norm(v)===norm(it.a)||alts.includes(norm(v));render();
+  it.ans=v;it.ok=isRight(v,it.a);record(it);render();
 });
 document.addEventListener('keydown',e=>{
-  if(view!=='card'||/INPUT|TEXTAREA/.test(e.target.tagName))return;
+  if(!S||view!=='card'||/INPUT|TEXTAREA/.test(e.target.tagName))return;
   if(e.key===' '||e.key==='Enter'){if(e.target.id==='flip'||e.target===document.body){e.preventDefault();fc.flip=!fc.flip;$('flip')?.classList.toggle('on',fc.flip)}}
   else if(e.key==='ArrowRight')nextCard(1);else if(e.key==='ArrowLeft')nextCard(-1);
 });
-render();
 }
 </script>
 </body>
